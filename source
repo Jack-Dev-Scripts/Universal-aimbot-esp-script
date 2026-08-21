@@ -20,6 +20,7 @@ local Settings = {
 
 	FOV = 130,
 	Smoothness = 0.15,
+	LockPart = "Head", -- Head / Chest / None
 
 	ESPColor = Color3.fromRGB(170, 90, 255),
 
@@ -40,12 +41,12 @@ local Connections = {}
 --==================================================
 
 local Colors = {
-	Background = Color3.fromRGB(8,8,15),
-	Panel = Color3.fromRGB(15,12,28),
-	Card = Color3.fromRGB(20,18,36),
+	Background = Color3.fromRGB(12, 13, 18),
+	Panel = Color3.fromRGB(18, 19, 27),
+	Card = Color3.fromRGB(24, 25, 35),
 
-	Accent = Color3.fromRGB(190,70,255),
-	Accent2 = Color3.fromRGB(0,180,255),
+	Accent = Color3.fromRGB(145, 70, 255),
+	Accent2 = Color3.fromRGB(75, 120, 255),
 
 	Text = Color3.fromRGB(245, 245, 250),
 	SubText = Color3.fromRGB(145, 147, 160),
@@ -53,8 +54,8 @@ local Colors = {
 	Success = Color3.fromRGB(55, 200, 120),
 	Danger = Color3.fromRGB(220, 65, 80),
 
-	Button = Color3.fromRGB(36,28,56),
-	ButtonHover = Color3.fromRGB(55,45,80),
+	Button = Color3.fromRGB(32, 33, 44),
+	ButtonHover = Color3.fromRGB(43, 44, 58),
 }
 
 --==================================================
@@ -121,7 +122,7 @@ end
 --==================================================
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "JackDevV3"
+ScreenGui.Name = "JackDev"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -133,9 +134,14 @@ ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 local Main = Instance.new("Frame")
 
 Main.Name = "Main"
-Main.Size = UDim2.fromOffset(760, 580)
+Main.Size = UDim2.fromOffset(760, 620)
 
-Main.Position = UDim2.new(0.5,-380,0.5,-290)
+Main.Position = UDim2.new(
+	0.5,
+	-310,
+	0.5,
+	-225
+)
 
 Main.BackgroundColor3 = Colors.Background
 Main.BorderSizePixel = 0
@@ -143,20 +149,6 @@ Main.BorderSizePixel = 0
 Main.Parent = ScreenGui
 
 Corner(Main, 14)
-
-local MainGlow = Instance.new("UIStroke")
-MainGlow.Color = Colors.Accent
-MainGlow.Thickness = 2
-MainGlow.Transparency = 0.15
-MainGlow.Parent = Main
-
-local MainGradient = Instance.new("UIGradient")
-MainGradient.Color = ColorSequence.new({
-	ColorSequenceKeypoint.new(0, Colors.Accent),
-	ColorSequenceKeypoint.new(1, Colors.Accent2)
-})
-MainGradient.Rotation = 35
-MainGradient.Parent = MainGlow
 
 Stroke(
 	Main,
@@ -330,7 +322,7 @@ end)
 
 local Sidebar = Instance.new("Frame")
 
-Sidebar.Size = UDim2.fromOffset(185,490)
+Sidebar.Size = UDim2.fromOffset(185,530)
 
 Sidebar.Position =
 	UDim2.fromOffset(12, 76)
@@ -418,7 +410,7 @@ Label(
 
 local Content = Instance.new("Frame")
 
-Content.Size = UDim2.fromOffset(540,490)
+Content.Size = UDim2.fromOffset(540,530)
 
 Content.Position =
 	UDim2.fromOffset(174, 76)
@@ -540,7 +532,7 @@ local LockToggle =
 
 local function UpdateLockUI()
 
-	if Settings.LockOn then
+	if Settings.LockPart == "Head" then
 
 		LockToggle.Text = "ON"
 
@@ -576,12 +568,51 @@ end
 
 LockToggle.MouseButton1Click:Connect(function()
 
-	Settings.LockOn =
-		not Settings.LockOn
+	Settings.LockPart = Settings.LockPart == "Head" and "None" or "Head"
+	Settings.LockOn = Settings.LockPart ~= "None"
 
 	LockedTarget = nil
 
 	UpdateLockUI()
+	UpdateChestUI()
+end)
+
+
+--==================================================
+-- CHEST AIMLOCK CARD
+--==================================================
+
+local ChestCard = CreateCard(
+	"🫀 Chest Aimlock",
+	"Lock onto the player's chest (UpperTorso)",
+	164
+)
+
+local ChestToggle = CreateToggle(ChestCard)
+
+local function UpdateChestUI()
+
+	if Settings.LockPart == "Chest" then
+		ChestToggle.Text = "ON"
+		Tween(ChestToggle,{
+			BackgroundColor3 = Colors.Accent,
+			TextColor3 = Color3.new(1,1,1)
+		},0.15)
+	else
+		ChestToggle.Text = "OFF"
+		Tween(ChestToggle,{
+			BackgroundColor3 = Colors.Button,
+			TextColor3 = Colors.SubText
+		},0.15)
+	end
+end
+
+ChestToggle.MouseButton1Click:Connect(function()
+	Settings.LockPart = Settings.LockPart == "Chest" and "None" or "Chest"
+	Settings.LockOn = Settings.LockPart ~= "None"
+	LockedTarget = nil
+	UpdateLockUI()
+	UpdateChestUI()
 end)
 
 --==================================================
@@ -589,7 +620,7 @@ end)
 --==================================================
 
 local ESPCard = CreateCard(
-	"👁 Player ESP",
+	"Player ESP",
 	"Highlight players through the map",
 	82
 )
@@ -646,10 +677,10 @@ end)
 --==================================================
 
 local KeyCard = CreateCard(
-	"⌨ Keybinds",
+	"Keybinds",
 	"Customize your controls",
 	164,
-	95
+	72
 )
 
 local LockKeyButton = Instance.new("TextButton")
@@ -658,7 +689,7 @@ LockKeyButton.Size =
 	UDim2.fromOffset(105, 26)
 
 LockKeyButton.Position =
-	UDim2.fromOffset(250, 14)
+	UDim2.fromOffset(250, 8)
 
 LockKeyButton.BackgroundColor3 =
 	Colors.Button
@@ -685,7 +716,7 @@ UIKeyButton.Size =
 	UDim2.fromOffset(105, 26)
 
 UIKeyButton.Position =
-	UDim2.fromOffset(250, 50)
+	UDim2.fromOffset(250, 38)
 
 UIKeyButton.BackgroundColor3 =
 	Colors.Button
@@ -710,7 +741,7 @@ Label(
 	KeyCard,
 	"Lock-on key",
 	UDim2.fromOffset(180, 20),
-	UDim2.fromOffset(15, 18),
+	UDim2.fromOffset(15, 9),
 	11,
 	Colors.Text
 )
@@ -719,7 +750,7 @@ Label(
 	KeyCard,
 	"UI toggle key",
 	UDim2.fromOffset(180, 20),
-	UDim2.fromOffset(15, 54),
+	UDim2.fromOffset(15, 39),
 	11,
 	Colors.Text
 )
@@ -935,10 +966,10 @@ end
 --==================================================
 
 local FOVCard = CreateCard(
-	"🎚 Field of View",
+	"Field of View",
 	"Targeting radius • 30 - 500",
-	272,
-	82
+	340,
+	90
 )
 
 local FOVValue = Label(
@@ -978,10 +1009,10 @@ CreateSlider(
 --==================================================
 
 local SmoothCard = CreateCard(
-	"🌊 Smoothness",
+	"Smoothness",
 	"Camera movement • 0 - 1",
-	364,
-	82
+	440,
+	90
 )
 
 local SmoothValue = Label(
@@ -1226,9 +1257,9 @@ local function GetNearestPlayer()
 
 			local Head =
 				Character
-				and Character:FindFirstChild(
-					"Head"
-				)
+				and (Settings.LockPart == "Chest"
+					and (Character:FindFirstChild("UpperTorso") or Character:FindFirstChild("Torso")))
+					or Character:FindFirstChild("Head")
 
 			if Humanoid
 				and Head
@@ -1236,7 +1267,7 @@ local function GetNearestPlayer()
 
 				local Position, OnScreen =
 					Camera:WorldToViewportPoint(
-						Head.Position
+						AimPart.Position
 					)
 
 				if OnScreen
@@ -1301,7 +1332,7 @@ local function ValidTarget(Player)
 
 	local Position, OnScreen =
 		Camera:WorldToViewportPoint(
-			Head.Position
+			AimPart.Position
 		)
 
 	if not OnScreen
@@ -1482,7 +1513,7 @@ table.insert(
 					local TargetCFrame =
 						CFrame.lookAt(
 							Camera.CFrame.Position,
-							Head.Position
+							AimPart.Position
 						)
 
 					if Settings.Smoothness <= 0 then
@@ -1606,10 +1637,7 @@ CloseButton.MouseButton1Click:Connect(
 -- INITIALIZE
 --==================================================
 
-Main.Size = UDim2.fromOffset(700,520)
-Main.BackgroundTransparency = 1
-Tween(Main,{Size=UDim2.fromOffset(760,580),BackgroundTransparency=0},0.35)
-
 UpdateLockUI()
 UpdateESPUI()
+UpdateChestUI()
 UpdateFOVCircle()
