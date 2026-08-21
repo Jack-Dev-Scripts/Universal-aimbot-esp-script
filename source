@@ -20,7 +20,6 @@ local Settings = {
 
 	FOV = 130,
 	Smoothness = 0.15,
-	LockPart = "Head", -- Head / Chest / None
 
 	ESPColor = Color3.fromRGB(170, 90, 255),
 
@@ -45,8 +44,8 @@ local Colors = {
 	Panel = Color3.fromRGB(18, 19, 27),
 	Card = Color3.fromRGB(24, 25, 35),
 
-	Accent = Color3.fromRGB(168, 85, 247),
-	Accent2 = Color3.fromRGB(59, 130, 246),
+	Accent = Color3.fromRGB(145, 70, 255),
+	Accent2 = Color3.fromRGB(75, 120, 255),
 
 	Text = Color3.fromRGB(245, 245, 250),
 	SubText = Color3.fromRGB(145, 147, 160),
@@ -134,9 +133,14 @@ ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 local Main = Instance.new("Frame")
 
 Main.Name = "Main"
-Main.Size = UDim2.fromOffset(700, 520)
+Main.Size = UDim2.fromOffset(620, 450)
 
-Main.Position = UDim2.new(0.5,-350,0.5,-260)
+Main.Position = UDim2.new(
+	0.5,
+	-310,
+	0.5,
+	-225
+)
 
 Main.BackgroundColor3 = Colors.Background
 Main.BorderSizePixel = 0
@@ -317,7 +321,8 @@ end)
 
 local Sidebar = Instance.new("Frame")
 
-Sidebar.Size = UDim2.fromOffset(150,430)
+Sidebar.Size =
+	UDim2.fromOffset(150, 365)
 
 Sidebar.Position =
 	UDim2.fromOffset(12, 76)
@@ -405,7 +410,8 @@ Label(
 
 local Content = Instance.new("Frame")
 
-Content.Size = UDim2.fromOffset(500,430)
+Content.Size =
+	UDim2.fromOffset(430, 365)
 
 Content.Position =
 	UDim2.fromOffset(174, 76)
@@ -527,7 +533,7 @@ local LockToggle =
 
 local function UpdateLockUI()
 
-	if Settings.LockPart == "Head" then
+	if Settings.LockOn then
 
 		LockToggle.Text = "ON"
 
@@ -563,60 +569,12 @@ end
 
 LockToggle.MouseButton1Click:Connect(function()
 
-	if Settings.LockPart == "Head" then
-		Settings.LockPart = "None"
-		Settings.LockOn = false
-	else
-		Settings.LockPart = "Head"
-		Settings.LockOn = true
-	end
+	Settings.LockOn =
+		not Settings.LockOn
 
 	LockedTarget = nil
+
 	UpdateLockUI()
-	UpdateChestUI()
-end)
-
-
---==================================================
--- CHEST AIMLOCK CARD
---==================================================
-
-local ChestCard = CreateCard(
-	"🫀 Chest Aimlock",
-	"Locks onto UpperTorso / Torso",
-	68
-)
-
-local ChestToggle = CreateToggle(ChestCard)
-
-local function UpdateChestUI()
-	if Settings.LockPart == "Chest" then
-		ChestToggle.Text = "ON"
-		Tween(ChestToggle,{
-			BackgroundColor3 = Colors.Accent,
-			TextColor3 = Color3.new(1,1,1)
-		},0.15)
-	else
-		ChestToggle.Text = "OFF"
-		Tween(ChestToggle,{
-			BackgroundColor3 = Colors.Button,
-			TextColor3 = Colors.SubText
-		},0.15)
-	end
-end
-
-ChestToggle.MouseButton1Click:Connect(function()
-	if Settings.LockPart == "Chest" then
-		Settings.LockPart = "None"
-		Settings.LockOn = false
-	else
-		Settings.LockPart = "Chest"
-		Settings.LockOn = true
-	end
-
-	LockedTarget = nil
-	UpdateLockUI()
-	UpdateChestUI()
 end)
 
 --==================================================
@@ -624,9 +582,9 @@ end)
 --==================================================
 
 local ESPCard = CreateCard(
-	"👁 Player ESP",
+	"Player ESP",
 	"Highlight players through the map",
-	136
+	82
 )
 
 local ESPToggle =
@@ -681,10 +639,10 @@ end)
 --==================================================
 
 local KeyCard = CreateCard(
-	"⌨ Keybinds",
+	"Keybinds",
 	"Customize your controls",
-	204,
-	70
+	164,
+	72
 )
 
 local LockKeyButton = Instance.new("TextButton")
@@ -970,9 +928,9 @@ end
 --==================================================
 
 local FOVCard = CreateCard(
-	"🎚 Field of View",
+	"Field of View",
 	"Targeting radius • 30 - 500",
-	282,
+	246,
 	72
 )
 
@@ -1013,9 +971,9 @@ CreateSlider(
 --==================================================
 
 local SmoothCard = CreateCard(
-	"🌊 Smoothness",
+	"Smoothness",
 	"Camera movement • 0 - 1",
-	362,
+	328,
 	72
 )
 
@@ -1266,12 +1224,12 @@ local function GetNearestPlayer()
 				)
 
 			if Humanoid
-				and AimPart
+				and Head
 				and Humanoid.Health > 0 then
 
 				local Position, OnScreen =
 					Camera:WorldToViewportPoint(
-						AimPart.Position
+						Head.Position
 					)
 
 				if OnScreen
@@ -1336,7 +1294,7 @@ local function ValidTarget(Player)
 
 	local Position, OnScreen =
 		Camera:WorldToViewportPoint(
-			AimPart.Position
+			Head.Position
 		)
 
 	if not OnScreen
@@ -1506,11 +1464,10 @@ table.insert(
 				local Character =
 					LockedTarget.Character
 
-				local AimPart =
-					Character and (
-						Settings.LockPart == "Chest"
-						and (Character:FindFirstChild("UpperTorso") or Character:FindFirstChild("Torso"))
-						or Character:FindFirstChild("Head")
+				local Head =
+					Character
+					and Character:FindFirstChild(
+						"Head"
 					)
 
 				if Head then
@@ -1518,7 +1475,7 @@ table.insert(
 					local TargetCFrame =
 						CFrame.lookAt(
 							Camera.CFrame.Position,
-							AimPart.Position
+							Head.Position
 						)
 
 					if Settings.Smoothness <= 0 then
@@ -1644,5 +1601,4 @@ CloseButton.MouseButton1Click:Connect(
 
 UpdateLockUI()
 UpdateESPUI()
-UpdateChestUI()
 UpdateFOVCircle()
