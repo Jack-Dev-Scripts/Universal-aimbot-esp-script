@@ -134,7 +134,7 @@ ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 local Main = Instance.new("Frame")
 
 Main.Name = "Main"
-Main.Size = UDim2.fromOffset(700, 560)
+Main.Size = UDim2.fromOffset(660,520)
 
 Main.Position = UDim2.new(
 	0.5,
@@ -322,7 +322,7 @@ end)
 
 local Sidebar = Instance.new("Frame")
 
-Sidebar.Size = UDim2.fromOffset(165,470)
+Sidebar.Size = UDim2.fromOffset(150,430)
 
 Sidebar.Position =
 	UDim2.fromOffset(12, 76)
@@ -410,7 +410,7 @@ Label(
 
 local Content = Instance.new("Frame")
 
-Content.Size = UDim2.fromOffset(500,470)
+Content.Size = UDim2.fromOffset(470,430)
 
 Content.Position =
 	UDim2.fromOffset(174, 76)
@@ -487,7 +487,7 @@ local function CreateToggle(parent)
 	local Button = Instance.new("TextButton")
 
 	Button.Size =
-		UDim2.fromOffset(85, 32)
+		UDim2.fromOffset(72,26)
 
 	Button.Position =
 		UDim2.new(
@@ -506,7 +506,7 @@ local function CreateToggle(parent)
 	Button.TextColor3 =
 		Colors.SubText
 
-	Button.TextSize = 11
+	Button.TextSize = 10
 	Button.Font =
 		Enum.Font.GothamBold
 
@@ -567,14 +567,16 @@ local function UpdateLockUI()
 end
 
 LockToggle.MouseButton1Click:Connect(function()
-
-	Settings.LockPart = Settings.LockPart == "Head" and "None" or "Head"
-	Settings.LockOn = Settings.LockPart ~= "None"
-
-	LockedTarget = nil
-
-	UpdateLockUI()
-	UpdateChestUI()
+    if Settings.LockPart == "Head" then
+        Settings.LockPart = "None"
+        Settings.LockOn = false
+    else
+        Settings.LockPart = "Head"
+        Settings.LockOn = true
+    end
+    LockedTarget = nil
+    UpdateLockUI()
+    UpdateChestUI()
 end)
 
 
@@ -620,9 +622,9 @@ end)
 --==================================================
 
 local ESPCard = CreateCard(
-	"👁 Player ESP",
+	"Player ESP",
 	"Highlight players through the map",
-	164
+	144
 )
 
 local ESPToggle =
