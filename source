@@ -1,43 +1,543 @@
--- JACKDEV BASIC UI PATCH
--- Replace your current GUI section with this simpler layout.
+--// JackDev - Lock-On + ESP (Simplified UI)
+--// LocalScript -> StarterPlayer > StarterPlayerScripts
 
-local Colors = {
-    Background = Color3.fromRGB(35,35,35),
-    Panel = Color3.fromRGB(45,45,45),
-    Button = Color3.fromRGB(60,60,60),
-    Accent = Color3.fromRGB(0,170,255),
-    Text = Color3.fromRGB(255,255,255),
-    SubText = Color3.fromRGB(180,180,180),
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+--==================================================
+-- SETTINGS
+--==================================================
+
+local Settings = {
+	LockOn = false,
+	TargetPart = "Head", -- "Head" or "HumanoidRootPart"
+	ESP = false, -- Disabled by default
+
+	FOV = 130,
+	Smoothness = 0.15,
+
+	ESPColor = Color3.fromRGB(170, 90, 255),
+
+	HeadLockKey = Enum.KeyCode.Q,
+	ChestLockKey = Enum.KeyCode.Z, -- Default keybind set to Z
+	UIToggleKey = Enum.KeyCode.RightAlt,
 }
 
--- Smaller window
-Main.Size = UDim2.fromOffset(560,380)
-Main.Position = UDim2.new(0.5,-280,0.5,-190)
-Main.BackgroundColor3 = Colors.Background
+local SystemActive = true
+local LockedTarget = nil
 
-TopBar.BackgroundColor3 = Colors.Panel
-Sidebar.Size = UDim2.fromOffset(130,300)
-Content.Size = UDim2.fromOffset(410,300)
+local ListeningForHeadKey = false
+local ListeningForChestKey = false
+local ListeningForUIKey = false
 
--- Simple card layout
-Head Aimlock   (Y = 0)
-Chest Aimlock  (Y = 60)
-Player ESP     (Y = 120)
-Keybinds       (Y = 180)
-FOV            (Y = 240)
-Smoothness     (Y = 300)
+local Connections = {}
 
--- Use plain gray buttons with blue ON state.
--- Use simple text labels (no gradients or glow).
+--==================================================
+-- GUI CREATION
+--==================================================
 
--- Head / Chest lock logic:
-Settings.LockPart = "Head"
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "JackDev"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Head button:
-Settings.LockPart = "Head"
+-- Main Frame
+local Main = Instance.new("Frame")
+Main.Name = "Main"
+Main.Size = UDim2.fromOffset(250, 330)
+Main.Position = UDim2.new(0.5, -125, 0.5, -165)
+Main.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Main.BorderSizePixel = 1
+Main.BorderColor3 = Color3.fromRGB(80, 80, 80)
+Main.Parent = ScreenGui
 
--- Chest button:
-Settings.LockPart = "Chest"
+-- TopBar / Header
+local TopBar = Instance.new("Frame")
+TopBar.Size = UDim2.new(1, 0, 0, 30)
+TopBar.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+TopBar.BorderSizePixel = 0
+TopBar.Parent = Main
 
--- If Head is selected, Chest turns OFF.
--- If Chest is selected, Head turns OFF.
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -30, 1, 0)
+Title.Position = UDim2.fromOffset(8, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "JackDev - Settings"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 14
+Title.Font = Enum.Font.SourceSansBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = TopBar
+
+local CloseButton = Instance.new("TextButton")
+CloseButton.Size = UDim2.fromOffset(30, 30)
+CloseButton.Position = UDim2.new(1, -30, 0, 0)
+CloseButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+CloseButton.BorderSizePixel = 0
+CloseButton.Text = "X"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.TextSize = 14
+CloseButton.Font = Enum.Font.SourceSansBold
+CloseButton.Parent = TopBar
+
+-- UI Container Helpers
+local function CreateRow(yPos, labelText)
+	local Label = Instance.new("TextLabel")
+	Label.Size = UDim2.fromOffset(110, 25)
+	Label.Position = UDim2.fromOffset(10, yPos)
+	Label.BackgroundTransparency = 1
+	Label.Text = labelText
+	Label.TextColor3 = Color3.fromRGB(220, 220, 220)
+	Label.TextSize = 14
+	Label.Font = Enum.Font.SourceSans
+	Label.TextXAlignment = Enum.TextXAlignment.Left
+	Label.Parent = Main
+	return Label
+end
+
+-- Head Lock Toggle
+CreateRow(40, "Head Aimlock:")
+local HeadLockToggle = Instance.new("TextButton")
+HeadLockToggle.Size = UDim2.fromOffset(100, 25)
+HeadLockToggle.Position = UDim2.fromOffset(130, 40)
+HeadLockToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+HeadLockToggle.BorderSizePixel = 1
+HeadLockToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+HeadLockToggle.TextSize = 13
+HeadLockToggle.Font = Enum.Font.SourceSansBold
+HeadLockToggle.Parent = Main
+
+-- Chest Lock Toggle
+CreateRow(75, "Chest Aimlock:")
+local ChestLockToggle = Instance.new("TextButton")
+ChestLockToggle.Size = UDim2.fromOffset(100, 25)
+ChestLockToggle.Position = UDim2.fromOffset(130, 75)
+ChestLockToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+ChestLockToggle.BorderSizePixel = 1
+ChestLockToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ChestLockToggle.TextSize = 13
+ChestLockToggle.Font = Enum.Font.SourceSansBold
+ChestLockToggle.Parent = Main
+
+local function UpdateLockUI()
+	local isHeadActive = Settings.LockOn and Settings.TargetPart == "Head"
+	local isChestActive = Settings.LockOn and Settings.TargetPart == "HumanoidRootPart"
+
+	HeadLockToggle.Text = isHeadActive and "ON" or "OFF"
+	HeadLockToggle.BackgroundColor3 = isHeadActive and Color3.fromRGB(0, 150, 70) or Color3.fromRGB(60, 60, 60)
+
+	ChestLockToggle.Text = isChestActive and "ON" or "OFF"
+	ChestLockToggle.BackgroundColor3 = isChestActive and Color3.fromRGB(0, 150, 70) or Color3.fromRGB(60, 60, 60)
+end
+
+HeadLockToggle.MouseButton1Click:Connect(function()
+	if Settings.LockOn and Settings.TargetPart == "Head" then
+		Settings.LockOn = false
+	else
+		Settings.LockOn = true
+		Settings.TargetPart = "Head"
+	end
+	LockedTarget = nil
+	UpdateLockUI()
+end)
+
+ChestLockToggle.MouseButton1Click:Connect(function()
+	if Settings.LockOn and Settings.TargetPart == "HumanoidRootPart" then
+		Settings.LockOn = false
+	else
+		Settings.LockOn = true
+		Settings.TargetPart = "HumanoidRootPart"
+	end
+	LockedTarget = nil
+	UpdateLockUI()
+end)
+
+-- ESP Toggle
+CreateRow(110, "Player ESP:")
+local ESPToggle = Instance.new("TextButton")
+ESPToggle.Size = UDim2.fromOffset(100, 25)
+ESPToggle.Position = UDim2.fromOffset(130, 110)
+ESPToggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+ESPToggle.BorderSizePixel = 1
+ESPToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ESPToggle.TextSize = 13
+ESPToggle.Font = Enum.Font.SourceSansBold
+ESPToggle.Parent = Main
+
+local function UpdateESPUI()
+	ESPToggle.Text = Settings.ESP and "ON" or "OFF"
+	ESPToggle.BackgroundColor3 = Settings.ESP and Color3.fromRGB(0, 150, 70) or Color3.fromRGB(60, 60, 60)
+end
+
+ESPToggle.MouseButton1Click:Connect(function()
+	Settings.ESP = not Settings.ESP
+	UpdateESPUI()
+end)
+
+-- Head Lock Keybind
+CreateRow(145, "Head Lock Key:")
+local HeadKeyButton = Instance.new("TextButton")
+HeadKeyButton.Size = UDim2.fromOffset(100, 25)
+HeadKeyButton.Position = UDim2.fromOffset(130, 145)
+HeadKeyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+HeadKeyButton.BorderSizePixel = 1
+HeadKeyButton.Text = Settings.HeadLockKey.Name
+HeadKeyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+HeadKeyButton.TextSize = 13
+HeadKeyButton.Font = Enum.Font.SourceSans
+HeadKeyButton.Parent = Main
+
+-- Chest Lock Keybind
+CreateRow(180, "Chest Lock Key:")
+local ChestKeyButton = Instance.new("TextButton")
+ChestKeyButton.Size = UDim2.fromOffset(100, 25)
+ChestKeyButton.Position = UDim2.fromOffset(130, 180)
+ChestKeyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+ChestKeyButton.BorderSizePixel = 1
+ChestKeyButton.Text = Settings.ChestLockKey.Name
+ChestKeyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ChestKeyButton.TextSize = 13
+ChestKeyButton.Font = Enum.Font.SourceSans
+ChestKeyButton.Parent = Main
+
+-- UI Keybind
+CreateRow(215, "UI Toggle Key:")
+local UIKeyButton = Instance.new("TextButton")
+UIKeyButton.Size = UDim2.fromOffset(100, 25)
+UIKeyButton.Position = UDim2.fromOffset(130, 215)
+UIKeyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+UIKeyButton.BorderSizePixel = 1
+UIKeyButton.Text = Settings.UIToggleKey.Name
+UIKeyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+UIKeyButton.TextSize = 13
+UIKeyButton.Font = Enum.Font.SourceSans
+UIKeyButton.Parent = Main
+
+-- FOV Input Box
+CreateRow(250, "FOV Radius:")
+local FOVBox = Instance.new("TextBox")
+FOVBox.Size = UDim2.fromOffset(100, 25)
+FOVBox.Position = UDim2.fromOffset(130, 250)
+FOVBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+FOVBox.BorderSizePixel = 1
+FOVBox.Text = tostring(Settings.FOV)
+FOVBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+FOVBox.TextSize = 13
+FOVBox.Font = Enum.Font.SourceSans
+FOVBox.Parent = Main
+
+FOVBox.FocusLost:Connect(function()
+	local val = tonumber(FOVBox.Text)
+	if val then
+		Settings.FOV = math.clamp(val, 30, 500)
+	end
+	FOVBox.Text = tostring(Settings.FOV)
+end)
+
+-- Smoothness Input Box
+CreateRow(285, "Smoothness:")
+local SmoothBox = Instance.new("TextBox")
+SmoothBox.Size = UDim2.fromOffset(100, 25)
+SmoothBox.Position = UDim2.fromOffset(130, 285)
+SmoothBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+SmoothBox.BorderSizePixel = 1
+SmoothBox.Text = tostring(Settings.Smoothness)
+SmoothBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+SmoothBox.TextSize = 13
+SmoothBox.Font = Enum.Font.SourceSans
+SmoothBox.Parent = Main
+
+SmoothBox.FocusLost:Connect(function()
+	local val = tonumber(SmoothBox.Text)
+	if val then
+		Settings.Smoothness = math.clamp(val, 0, 1)
+	end
+	SmoothBox.Text = tostring(Settings.Smoothness)
+end)
+
+--==================================================
+-- FOV CIRCLE
+--==================================================
+
+local FOVCircle = Instance.new("Frame")
+FOVCircle.Name = "FOVCircle"
+FOVCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+FOVCircle.Position = UDim2.fromScale(0.5, 0.5)
+FOVCircle.BackgroundTransparency = 1
+FOVCircle.Visible = false
+FOVCircle.Parent = ScreenGui
+
+local FOVCorner = Instance.new("UICorner")
+FOVCorner.CornerRadius = UDim.new(1, 0)
+FOVCorner.Parent = FOVCircle
+
+local FOVStroke = Instance.new("UIStroke")
+FOVStroke.Color = Settings.ESPColor
+FOVStroke.Transparency = 0.3
+FOVStroke.Thickness = 1
+FOVStroke.Parent = FOVCircle
+
+local function UpdateFOVCircle()
+	FOVCircle.Visible = Settings.LockOn
+	FOVCircle.Size = UDim2.fromOffset(Settings.FOV * 2, Settings.FOV * 2)
+end
+
+--==================================================
+-- ESP LOGIC
+--==================================================
+
+local function CreateESP(player)
+	if player == LocalPlayer or not player.Character then return end
+
+	local Old = player.Character:FindFirstChild("JackDevESP")
+	if Old then Old:Destroy() end
+
+	local Highlight = Instance.new("Highlight")
+	Highlight.Name = "JackDevESP"
+	Highlight.FillColor = Settings.ESPColor
+	Highlight.OutlineColor = Color3.new(1, 1, 1)
+	Highlight.FillTransparency = 0.6
+	Highlight.OutlineTransparency = 0
+	Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	Highlight.Enabled = Settings.ESP
+	Highlight.Parent = player.Character
+end
+
+local function UpdateESP()
+	for _, player in Players:GetPlayers() do
+		if player ~= LocalPlayer and player.Character then
+			local Highlight = player.Character:FindFirstChild("JackDevESP")
+			if Highlight then
+				Highlight.Enabled = Settings.ESP
+				Highlight.FillColor = Settings.ESPColor
+			end
+		end
+	end
+end
+
+for _, player in Players:GetPlayers() do
+	if player ~= LocalPlayer then
+		if player.Character then CreateESP(player) end
+		table.insert(Connections, player.CharacterAdded:Connect(function()
+			task.wait(0.5)
+			if SystemActive then CreateESP(player) end
+		end))
+	end
+end
+
+table.insert(Connections, Players.PlayerAdded:Connect(function(player)
+	table.insert(Connections, player.CharacterAdded:Connect(function()
+		task.wait(0.5)
+		if SystemActive then CreateESP(player) end
+	end))
+end))
+
+--==================================================
+-- TARGETING LOGIC
+--==================================================
+
+local function GetNearestPlayer()
+	local ClosestPlayer = nil
+	local ClosestDistance = Settings.FOV
+	local Center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+	for _, player in Players:GetPlayers() do
+		if player ~= LocalPlayer and player.Character then
+			local Humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+			local TargetPart = player.Character:FindFirstChild(Settings.TargetPart)
+
+			if Humanoid and TargetPart and Humanoid.Health > 0 then
+				local Position, OnScreen = Camera:WorldToViewportPoint(TargetPart.Position)
+				if OnScreen and Position.Z > 0 then
+					local Distance = (Vector2.new(Position.X, Position.Y) - Center).Magnitude
+					if Distance < ClosestDistance then
+						ClosestDistance = Distance
+						ClosestPlayer = player
+					end
+				end
+			end
+		end
+	end
+	return ClosestPlayer
+end
+
+local function ValidTarget(Player)
+	if not Player or Player == LocalPlayer or not Player.Character then return false end
+	local Humanoid = Player.Character:FindFirstChildOfClass("Humanoid")
+	local TargetPart = Player.Character:FindFirstChild(Settings.TargetPart)
+
+	if not Humanoid or not TargetPart or Humanoid.Health <= 0 then return false end
+
+	local Position, OnScreen = Camera:WorldToViewportPoint(TargetPart.Position)
+	if not OnScreen or Position.Z <= 0 then return false end
+
+	local Center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+	return (Vector2.new(Position.X, Position.Y) - Center).Magnitude <= Settings.FOV
+end
+
+--==================================================
+-- INPUT & BINDINGS
+--==================================================
+
+HeadKeyButton.MouseButton1Click:Connect(function()
+	if ListeningForChestKey or ListeningForUIKey then return end
+	ListeningForHeadKey = true
+	HeadKeyButton.Text = "Press Key..."
+end)
+
+ChestKeyButton.MouseButton1Click:Connect(function()
+	if ListeningForHeadKey or ListeningForUIKey then return end
+	ListeningForChestKey = true
+	ChestKeyButton.Text = "Press Key..."
+end)
+
+UIKeyButton.MouseButton1Click:Connect(function()
+	if ListeningForHeadKey or ListeningForChestKey then return end
+	ListeningForUIKey = true
+	UIKeyButton.Text = "Press Key..."
+end)
+
+table.insert(Connections, UserInputService.InputBegan:Connect(function(input, processed)
+	if not SystemActive or input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+
+	if ListeningForHeadKey then
+		Settings.HeadLockKey = input.KeyCode
+		ListeningForHeadKey = false
+		HeadKeyButton.Text = Settings.HeadLockKey.Name
+		return
+	end
+
+	if ListeningForChestKey then
+		Settings.ChestLockKey = input.KeyCode
+		ListeningForChestKey = false
+		ChestKeyButton.Text = Settings.ChestLockKey.Name
+		return
+	end
+
+	if ListeningForUIKey then
+		Settings.UIToggleKey = input.KeyCode
+		ListeningForUIKey = false
+		UIKeyButton.Text = Settings.UIToggleKey.Name
+		return
+	end
+
+	if processed then return end
+
+	if input.KeyCode == Settings.UIToggleKey then
+		Main.Visible = not Main.Visible
+	elseif input.KeyCode == Settings.HeadLockKey then
+		if Settings.LockOn and Settings.TargetPart == "Head" then
+			Settings.LockOn = false
+		else
+			Settings.LockOn = true
+			Settings.TargetPart = "Head"
+		end
+		LockedTarget = Settings.LockOn and GetNearestPlayer() or nil
+		UpdateLockUI()
+	elseif input.KeyCode == Settings.ChestLockKey then
+		if Settings.LockOn and Settings.TargetPart == "HumanoidRootPart" then
+			Settings.LockOn = false
+		else
+			Settings.LockOn = true
+			Settings.TargetPart = "HumanoidRootPart"
+		end
+		LockedTarget = Settings.LockOn and GetNearestPlayer() or nil
+		UpdateLockUI()
+	end
+end))
+
+--==================================================
+-- MAIN LOOP
+--==================================================
+
+table.insert(Connections, RunService.RenderStepped:Connect(function()
+	if not SystemActive then return end
+
+	UpdateFOVCircle()
+	UpdateESP()
+
+	if not Settings.LockOn then return end
+
+	if not ValidTarget(LockedTarget) then
+		LockedTarget = GetNearestPlayer()
+	end
+
+	if LockedTarget and LockedTarget.Character then
+		local TargetPart = LockedTarget.Character:FindFirstChild(Settings.TargetPart)
+		if TargetPart then
+			local TargetCFrame = CFrame.lookAt(Camera.CFrame.Position, TargetPart.Position)
+			if Settings.Smoothness <= 0 then
+				Camera.CFrame = TargetCFrame
+			else
+				Camera.CFrame = Camera.CFrame:Lerp(TargetCFrame, Settings.Smoothness)
+			end
+		end
+	end
+end))
+
+--==================================================
+-- DRAGGING LOGIC
+--==================================================
+
+local Dragging, DragStart, StartPosition
+
+TopBar.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		Dragging = true
+		DragStart = input.Position
+		StartPosition = Main.Position
+	end
+end)
+
+TopBar.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		Dragging = false
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if Dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+		local Delta = input.Position - DragStart
+		Main.Position = UDim2.new(
+			StartPosition.X.Scale,
+			StartPosition.X.Offset + Delta.X,
+			StartPosition.Y.Scale,
+			StartPosition.Y.Offset + Delta.Y
+		)
+	end
+end)
+
+--==================================================
+-- SHUTDOWN
+--==================================================
+
+local function Shutdown()
+	if not SystemActive then return end
+	SystemActive = false
+
+	for _, conn in ipairs(Connections) do
+		if conn and conn.Connected then conn:Disconnect() end
+	end
+	table.clear(Connections)
+
+	for _, player in Players:GetPlayers() do
+		if player.Character then
+			local ESP = player.Character:FindFirstChild("JackDevESP")
+			if ESP then ESP:Destroy() end
+		end
+	end
+
+	ScreenGui:Destroy()
+end
+
+CloseButton.MouseButton1Click:Connect(Shutdown)
+
+-- Init
+UpdateLockUI()
+UpdateESPUI()
+UpdateFOVCircle()
