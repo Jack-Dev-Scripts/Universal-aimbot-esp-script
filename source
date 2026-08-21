@@ -1,9 +1,10 @@
---// JackDev Lock-On + ESP
---// Place this LocalScript in StarterPlayer > StarterPlayerScripts
+--// JackDev - Polished UI
+--// LocalScript -> StarterPlayer > StarterPlayerScripts
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
@@ -19,484 +20,953 @@ local Settings = {
 	FOV = 130,
 	Smoothness = 0.15,
 
-	ESPColor = Color3.fromRGB(255, 60, 60),
+	ESPColor = Color3.fromRGB(170, 90, 255),
 
 	LockKey = Enum.KeyCode.Q,
 	UIToggleKey = Enum.KeyCode.RightAlt,
 }
 
-local lockedTarget = nil
-local UIVisible = true
 local SystemActive = true
+local LockedTarget = nil
 
-local listeningForLockKey = false
-local listeningForUIKey = false
+local ListeningForLockKey = false
+local ListeningForUIKey = false
 
 local Connections = {}
+
+--==================================================
+-- COLORS
+--==================================================
+
+local Colors = {
+	Background = Color3.fromRGB(12, 13, 18),
+	Panel = Color3.fromRGB(18, 19, 27),
+	Card = Color3.fromRGB(24, 25, 35),
+
+	Accent = Color3.fromRGB(145, 70, 255),
+	Accent2 = Color3.fromRGB(75, 120, 255),
+
+	Text = Color3.fromRGB(245, 245, 250),
+	SubText = Color3.fromRGB(145, 147, 160),
+
+	Success = Color3.fromRGB(55, 200, 120),
+	Danger = Color3.fromRGB(220, 65, 80),
+
+	Button = Color3.fromRGB(32, 33, 44),
+	ButtonHover = Color3.fromRGB(43, 44, 58),
+}
+
+--==================================================
+-- HELPERS
+--==================================================
+
+local function Tween(object, properties, duration)
+	local info = TweenInfo.new(
+		duration or 0.2,
+		Enum.EasingStyle.Quint,
+		Enum.EasingDirection.Out
+	)
+
+	TweenService:Create(
+		object,
+		info,
+		properties
+	):Play()
+end
+
+local function Corner(object, radius)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, radius)
+	c.Parent = object
+	return c
+end
+
+local function Stroke(object, color, transparency, thickness)
+	local s = Instance.new("UIStroke")
+	s.Color = color
+	s.Transparency = transparency or 0
+	s.Thickness = thickness or 1
+	s.Parent = object
+	return s
+end
+
+local function Label(parent, text, size, position, textSize, color)
+	local label = Instance.new("TextLabel")
+
+	label.Size = size
+	label.Position = position
+
+	label.BackgroundTransparency = 1
+	label.Text = text
+
+	label.TextColor3 = color or Colors.Text
+	label.TextSize = textSize or 14
+	label.Font = Enum.Font.GothamMedium
+
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.TextYAlignment = Enum.TextYAlignment.Center
+
+	label.Parent = parent
+
+	return label
+end
 
 --==================================================
 -- GUI
 --==================================================
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "JackDevUI"
+ScreenGui.Name = "JackDev"
 ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
+--==================================================
+-- MAIN WINDOW
+--==================================================
+
 local Main = Instance.new("Frame")
+
 Main.Name = "Main"
-Main.Size = UDim2.fromOffset(320, 430)
-Main.Position = UDim2.new(0, 30, 0.5, -215)
-Main.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+Main.Size = UDim2.fromOffset(620, 430)
+Main.Position = UDim2.new(
+	0.5,
+	-310,
+	0.5,
+	-215
+)
+
+Main.BackgroundColor3 = Colors.Background
 Main.BorderSizePixel = 0
+
 Main.Parent = ScreenGui
 
-local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 10)
-MainCorner.Parent = Main
+Corner(Main, 14)
+Stroke(Main, Color3.fromRGB(65, 55, 90), 0.25, 1)
+
+--==================================================
+-- TOP BAR
+--==================================================
+
+local TopBar = Instance.new("Frame")
+
+TopBar.Size = UDim2.new(1, 0, 0, 65)
+TopBar.BackgroundColor3 = Colors.Panel
+TopBar.BorderSizePixel = 0
+
+TopBar.Parent = Main
+
+Corner(TopBar, 14)
+
+-- Gradient accent
+
+local Gradient = Instance.new("UIGradient")
+
+Gradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(
+		0,
+		Colors.Accent
+	),
+
+	ColorSequenceKeypoint.new(
+		1,
+		Colors.Accent2
+	)
+})
+
+Gradient.Rotation = 0
+Gradient.Parent = TopBar
+
+-- Dark overlay
+
+local TopOverlay = Instance.new("Frame")
+
+TopOverlay.Size = UDim2.new(1, 0, 1, 0)
+TopOverlay.BackgroundColor3 = Colors.Panel
+TopOverlay.BackgroundTransparency = 0.15
+TopOverlay.BorderSizePixel = 0
+
+TopOverlay.Parent = TopBar
+
+Corner(TopOverlay, 14)
+
+--==================================================
+-- LOGO
+--==================================================
+
+local Logo = Instance.new("Frame")
+
+Logo.Size = UDim2.fromOffset(40, 40)
+Logo.Position = UDim2.fromOffset(14, 12)
+
+Logo.BackgroundColor3 = Colors.Accent
+Logo.BorderSizePixel = 0
+
+Logo.Parent = TopBar
+
+Corner(Logo, 11)
+
+local LogoText = Label(
+	Logo,
+	"J",
+	UDim2.fromScale(1, 1),
+	UDim2.fromOffset(0, 0),
+	21,
+	Color3.new(1, 1, 1)
+)
+
+LogoText.TextXAlignment = Enum.TextXAlignment.Center
+LogoText.Font = Enum.Font.GothamBold
 
 --==================================================
 -- TITLE
 --==================================================
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -45, 0, 45)
-Title.Position = UDim2.fromOffset(0, 0)
-Title.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
-Title.BorderSizePixel = 0
-Title.Text = "JackDev"
-Title.TextColor3 = Color3.new(1, 1, 1)
-Title.TextSize = 20
-Title.Font = Enum.Font.GothamBold
-Title.Parent = Main
+local Title = Label(
+	TopBar,
+	"JackDev",
+	UDim2.fromOffset(250, 28),
+	UDim2.fromOffset(66, 9),
+	20,
+	Colors.Text
+)
 
-local TitleCorner = Instance.new("UICorner")
-TitleCorner.CornerRadius = UDim.new(0, 10)
-TitleCorner.Parent = Title
+Title.Font = Enum.Font.GothamBold
+
+local Subtitle = Label(
+	TopBar,
+	"CONTROL PANEL",
+	UDim2.fromOffset(250, 20),
+	UDim2.fromOffset(67, 32),
+	10,
+	Colors.SubText
+)
+
+Subtitle.Font = Enum.Font.GothamBold
 
 --==================================================
 -- CLOSE BUTTON
 --==================================================
 
 local CloseButton = Instance.new("TextButton")
-CloseButton.Name = "CloseButton"
-CloseButton.Size = UDim2.fromOffset(45, 45)
-CloseButton.Position = UDim2.new(1, -45, 0, 0)
-CloseButton.BackgroundColor3 = Color3.fromRGB(180, 45, 45)
+
+CloseButton.Size = UDim2.fromOffset(36, 36)
+CloseButton.Position = UDim2.new(1, -48, 0, 14)
+
+CloseButton.BackgroundColor3 = Color3.fromRGB(35, 28, 38)
 CloseButton.BorderSizePixel = 0
-CloseButton.Text = "X"
-CloseButton.TextColor3 = Color3.new(1, 1, 1)
-CloseButton.TextSize = 18
-CloseButton.Font = Enum.Font.GothamBold
-CloseButton.Parent = Main
 
-local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 10)
-CloseCorner.Parent = CloseButton
+CloseButton.Text = "×"
+CloseButton.TextColor3 = Colors.SubText
+CloseButton.TextSize = 25
+CloseButton.Font = Enum.Font.GothamMedium
 
---==================================================
--- DRAGGING
---==================================================
+CloseButton.Parent = TopBar
 
-local dragging = false
-local dragStart
-local startPosition
+Corner(CloseButton, 10)
 
-table.insert(Connections, Title.InputBegan:Connect(function(input)
-	if not SystemActive then
-		return
-	end
+CloseButton.MouseEnter:Connect(function()
+	Tween(
+		CloseButton,
+		{
+			BackgroundColor3 = Colors.Danger,
+			TextColor3 = Color3.new(1, 1, 1)
+		},
+		0.15
+	)
+end)
 
-	if input.UserInputType == Enum.UserInputType.MouseButton1
-		or input.UserInputType == Enum.UserInputType.Touch then
-
-		dragging = true
-		dragStart = input.Position
-		startPosition = Main.Position
-	end
-end))
-
-table.insert(Connections, UserInputService.InputChanged:Connect(function(input)
-	if not SystemActive or not dragging then
-		return
-	end
-
-	if input.UserInputType == Enum.UserInputType.MouseMovement
-		or input.UserInputType == Enum.UserInputType.Touch then
-
-		local delta = input.Position - dragStart
-
-		Main.Position = UDim2.new(
-			startPosition.X.Scale,
-			startPosition.X.Offset + delta.X,
-			startPosition.Y.Scale,
-			startPosition.Y.Offset + delta.Y
-		)
-	end
-end))
-
-table.insert(Connections, UserInputService.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1
-		or input.UserInputType == Enum.UserInputType.Touch then
-
-		dragging = false
-	end
-end))
+CloseButton.MouseLeave:Connect(function()
+	Tween(
+		CloseButton,
+		{
+			BackgroundColor3 = Color3.fromRGB(35, 28, 38),
+			TextColor3 = Colors.SubText
+		},
+		0.15
+	)
+end)
 
 --==================================================
--- UI HELPERS
+-- SIDEBAR
 --==================================================
 
-local function createButton(text, position, size)
+local Sidebar = Instance.new("Frame")
+
+Sidebar.Size = UDim2.fromOffset(150, 345)
+Sidebar.Position = UDim2.fromOffset(12, 76)
+
+Sidebar.BackgroundColor3 = Colors.Panel
+Sidebar.BorderSizePixel = 0
+
+Sidebar.Parent = Main
+
+Corner(Sidebar, 12)
+
+Label(
+	Sidebar,
+	"SETTINGS",
+	UDim2.fromOffset(120, 25),
+	UDim2.fromOffset(15, 12),
+	10,
+	Colors.SubText
+)
+
+--==================================================
+-- STATUS
+--==================================================
+
+local StatusCard = Instance.new("Frame")
+
+StatusCard.Size = UDim2.fromOffset(120, 52)
+StatusCard.Position = UDim2.fromOffset(15, 45)
+
+StatusCard.BackgroundColor3 = Colors.Card
+StatusCard.BorderSizePixel = 0
+
+StatusCard.Parent = Sidebar
+
+Corner(StatusCard, 9)
+
+local StatusDot = Instance.new("Frame")
+
+StatusDot.Size = UDim2.fromOffset(8, 8)
+StatusDot.Position = UDim2.fromOffset(12, 16)
+
+StatusDot.BackgroundColor3 = Colors.Success
+StatusDot.BorderSizePixel = 0
+
+StatusDot.Parent = StatusCard
+
+Corner(StatusDot, 8)
+
+local StatusText = Label(
+	StatusCard,
+	"ACTIVE",
+	UDim2.fromOffset(85, 20),
+	UDim2.fromOffset(28, 7),
+	11,
+	Colors.Text
+)
+
+StatusText.Font = Enum.Font.GothamBold
+
+local StatusSub = Label(
+	StatusCard,
+	"JackDev",
+	UDim2.fromOffset(85, 18),
+	UDim2.fromOffset(28, 25),
+	9,
+	Colors.SubText
+)
+
+--==================================================
+-- CONTENT
+--==================================================
+
+local Content = Instance.new("Frame")
+
+Content.Size = UDim2.fromOffset(430, 345)
+Content.Position = UDim2.fromOffset(174, 76)
+
+Content.BackgroundTransparency = 1
+Content.Parent = Main
+
+--==================================================
+-- CARD CREATOR
+--==================================================
+
+local function CreateCard(title, subtitle, y)
+
+	local Card = Instance.new("Frame")
+
+	Card.Size = UDim2.new(1, 0, 0, 72)
+	Card.Position = UDim2.fromOffset(0, y)
+
+	Card.BackgroundColor3 = Colors.Card
+	Card.BorderSizePixel = 0
+
+	Card.Parent = Content
+
+	Corner(Card, 11)
+	Stroke(
+		Card,
+		Color3.fromRGB(55, 55, 70),
+		0.55,
+		1
+	)
+
+	local TitleLabel = Label(
+		Card,
+		title,
+		UDim2.fromOffset(220, 25),
+		UDim2.fromOffset(15, 10),
+		14,
+		Colors.Text
+	)
+
+	TitleLabel.Font = Enum.Font.GothamBold
+
+	local SubtitleLabel = Label(
+		Card,
+		subtitle,
+		UDim2.fromOffset(220, 20),
+		UDim2.fromOffset(15, 36),
+		10,
+		Colors.SubText
+	)
+
+	return Card
+end
+
+--==================================================
+-- TOGGLE CREATOR
+--==================================================
+
+local function CreateToggle(parent, text, y)
+
 	local Button = Instance.new("TextButton")
 
-	Button.Size = size or UDim2.fromOffset(280, 40)
-	Button.Position = position
-	Button.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-	Button.BorderSizePixel = 0
-	Button.Text = text
-	Button.TextColor3 = Color3.new(1, 1, 1)
-	Button.TextSize = 15
-	Button.Font = Enum.Font.GothamMedium
-	Button.AutoButtonColor = true
-	Button.Parent = Main
+	Button.Size = UDim2.fromOffset(85, 32)
+	Button.Position = UDim2.new(
+		1,
+		-100,
+		0,
+		y
+	)
 
-	local Corner = Instance.new("UICorner")
-	Corner.CornerRadius = UDim.new(0, 7)
-	Corner.Parent = Button
+	Button.BackgroundColor3 = Colors.Button
+	Button.BorderSizePixel = 0
+
+	Button.Text = text
+	Button.TextColor3 = Colors.SubText
+	Button.TextSize = 11
+	Button.Font = Enum.Font.GothamBold
+
+	Button.Parent = parent
+
+	Corner(Button, 8)
+
+	Button.MouseEnter:Connect(function()
+		if not Button:GetAttribute("Active") then
+			Tween(
+				Button,
+				{
+					BackgroundColor3 = Colors.ButtonHover
+				},
+				0.15
+			)
+		end
+	end)
 
 	return Button
 end
 
 --==================================================
--- LOCK-ON
+-- LOCK CARD
 --==================================================
 
-local LockButton = createButton(
-	"Lock-On: OFF",
-	UDim2.fromOffset(20, 60)
+local LockCard = CreateCard(
+	"Head Aimlock",
+	"Lock onto the nearest player",
+	0
 )
 
-local function updateLockButton()
+local LockToggle = CreateToggle(
+	LockCard,
+	"OFF",
+	20
+)
+
+local function UpdateLockUI()
+
 	if Settings.LockOn then
-		LockButton.Text = "Lock-On: ON"
-		LockButton.BackgroundColor3 = Color3.fromRGB(40, 150, 80)
+
+		LockToggle.Text = "ON"
+
+		LockToggle:SetAttribute(
+			"Active",
+			true
+		)
+
+		Tween(
+			LockToggle,
+			{
+				BackgroundColor3 = Colors.Accent,
+				TextColor3 = Color3.new(1, 1, 1)
+			},
+			0.15
+		)
+
 	else
-		LockButton.Text = "Lock-On: OFF"
-		LockButton.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+
+		LockToggle.Text = "OFF"
+
+		LockToggle:SetAttribute(
+			"Active",
+			false
+		)
+
+		Tween(
+			LockToggle,
+			{
+				BackgroundColor3 = Colors.Button,
+				TextColor3 = Colors.SubText
+			},
+			0.15
+		)
 	end
 end
 
-table.insert(Connections, LockButton.MouseButton1Click:Connect(function()
-	if not SystemActive then
-		return
-	end
+LockToggle.MouseButton1Click:Connect(function()
 
 	Settings.LockOn = not Settings.LockOn
-	lockedTarget = nil
 
-	updateLockButton()
-end))
+	LockedTarget = nil
+
+	UpdateLockUI()
+end)
 
 --==================================================
--- ESP
+-- ESP CARD
 --==================================================
 
-local ESPButton = createButton(
-	"ESP: ON",
-	UDim2.fromOffset(20, 110)
+local ESPCard = CreateCard(
+	"Player ESP",
+	"Highlight players through the map",
+	82
 )
 
-local function updateESPButton()
+local ESPToggle = CreateToggle(
+	ESPCard,
+	"ON",
+	20
+)
+
+local function UpdateESPUI()
+
 	if Settings.ESP then
-		ESPButton.Text = "ESP: ON"
-		ESPButton.BackgroundColor3 = Color3.fromRGB(40, 150, 80)
+
+		ESPToggle.Text = "ON"
+
+		ESPToggle:SetAttribute(
+			"Active",
+			true
+		)
+
+		Tween(
+			ESPToggle,
+			{
+				BackgroundColor3 = Colors.Accent,
+				TextColor3 = Color3.new(1, 1, 1)
+			},
+			0.15
+		)
+
 	else
-		ESPButton.Text = "ESP: OFF"
-		ESPButton.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+
+		ESPToggle.Text = "OFF"
+
+		ESPToggle:SetAttribute(
+			"Active",
+			false
+		)
+
+		Tween(
+			ESPToggle,
+			{
+				BackgroundColor3 = Colors.Button,
+				TextColor3 = Colors.SubText
+			},
+			0.15
+		)
 	end
 end
 
-table.insert(Connections, ESPButton.MouseButton1Click:Connect(function()
-	if not SystemActive then
-		return
-	end
+ESPToggle.MouseButton1Click:Connect(function()
 
 	Settings.ESP = not Settings.ESP
-	updateESPButton()
-end))
+
+	UpdateESPUI()
+end)
 
 --==================================================
--- LOCK KEY
+-- KEYBINDS CARD
 --==================================================
 
-local LockKeyButton = createButton(
-	"Lock Key: Q",
-	UDim2.fromOffset(20, 160)
+local KeyCard = CreateCard(
+	"Keybinds",
+	"Customize your controls",
+	164
 )
 
-local function updateLockKeyButton()
-	if listeningForLockKey then
-		LockKeyButton.Text = "Press a key..."
-		LockKeyButton.BackgroundColor3 = Color3.fromRGB(180, 120, 40)
-	else
-		LockKeyButton.Text = "Lock Key: " .. Settings.LockKey.Name
-		LockKeyButton.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-	end
+local LockKeyButton = Instance.new("TextButton")
+
+LockKeyButton.Size = UDim2.fromOffset(110, 28)
+LockKeyButton.Position = UDim2.fromOffset(230, 8)
+
+LockKeyButton.BackgroundColor3 = Colors.Button
+LockKeyButton.BorderSizePixel = 0
+
+LockKeyButton.Text = "Q"
+LockKeyButton.TextColor3 = Colors.Text
+LockKeyButton.TextSize = 11
+LockKeyButton.Font = Enum.Font.GothamBold
+
+LockKeyButton.Parent = KeyCard
+
+Corner(LockKeyButton, 7)
+
+local UIKeyButton = Instance.new("TextButton")
+
+UIKeyButton.Size = UDim2.fromOffset(110, 28)
+UIKeyButton.Position = UDim2.fromOffset(230, 38)
+
+UIKeyButton.BackgroundColor3 = Colors.Button
+UIKeyButton.BorderSizePixel = 0
+
+UIKeyButton.Text = "RightAlt"
+UIKeyButton.TextColor3 = Colors.Text
+UIKeyButton.TextSize = 11
+UIKeyButton.Font = Enum.Font.GothamBold
+
+UIKeyButton.Parent = KeyCard
+
+Corner(UIKeyButton, 7)
+
+local LockKeyLabel = Label(
+	KeyCard,
+	"Lock-on key",
+	UDim2.fromOffset(200, 20),
+	UDim2.fromOffset(15, 9),
+	11,
+	Colors.Text
+)
+
+local UIKeyLabel = Label(
+	KeyCard,
+	"UI toggle key",
+	UDim2.fromOffset(200, 20),
+	UDim2.fromOffset(15, 39),
+	11,
+	Colors.Text
+)
+
+--==================================================
+-- FOV CARD
+--==================================================
+
+local FOVCard = CreateCard(
+	"Field of View",
+	"Targeting radius",
+	246
+)
+
+local FOVValue = Label(
+	FOVCard,
+	"130",
+	UDim2.fromOffset(60, 35),
+	UDim2.fromOffset(180, 18),
+	14,
+	Colors.Accent
+)
+
+FOVValue.TextXAlignment = Enum.TextXAlignment.Center
+FOVValue.Font = Enum.Font.GothamBold
+
+local FOVMinus = Instance.new("TextButton")
+
+FOVMinus.Size = UDim2.fromOffset(32, 32)
+FOVMinus.Position = UDim2.fromOffset(145, 20)
+
+FOVMinus.BackgroundColor3 = Colors.Button
+FOVMinus.BorderSizePixel = 0
+FOVMinus.Text = "−"
+FOVMinus.TextColor3 = Colors.Text
+FOVMinus.TextSize = 18
+FOVMinus.Font = Enum.Font.GothamBold
+
+FOVMinus.Parent = FOVCard
+Corner(FOVMinus, 8)
+
+local FOVPlus = Instance.new("TextButton")
+
+FOVPlus.Size = UDim2.fromOffset(32, 32)
+FOVPlus.Position = UDim2.fromOffset(285, 20)
+
+FOVPlus.BackgroundColor3 = Colors.Button
+FOVPlus.BorderSizePixel = 0
+FOVPlus.Text = "+"
+FOVPlus.TextColor3 = Colors.Text
+FOVPlus.TextSize = 18
+FOVPlus.Font = Enum.Font.GothamBold
+
+FOVPlus.Parent = FOVCard
+Corner(FOVPlus, 8)
+
+local function UpdateFOV()
+	FOVValue.Text = tostring(Settings.FOV)
 end
 
-table.insert(Connections, LockKeyButton.MouseButton1Click:Connect(function()
-	if not SystemActive or listeningForUIKey then
-		return
-	end
+FOVMinus.MouseButton1Click:Connect(function()
 
-	listeningForLockKey = true
-	updateLockKeyButton()
-end))
+	Settings.FOV = math.max(
+		30,
+		Settings.FOV - 10
+	)
+
+	UpdateFOV()
+end)
+
+FOVPlus.MouseButton1Click:Connect(function()
+
+	Settings.FOV = math.min(
+		500,
+		Settings.FOV + 10
+	)
+
+	UpdateFOV()
+end)
 
 --==================================================
--- UI KEY
+-- SMOOTHNESS CARD
 --==================================================
 
-local UIKeyButton = createButton(
-	"UI Toggle: RightAlt",
-	UDim2.fromOffset(20, 210)
+local SmoothCard = CreateCard(
+	"Smoothness",
+	"Camera movement speed",
+	328
 )
 
-local function updateUIKeyButton()
-	if listeningForUIKey then
-		UIKeyButton.Text = "Press a key..."
-		UIKeyButton.BackgroundColor3 = Color3.fromRGB(180, 120, 40)
-	else
-		UIKeyButton.Text = "UI Toggle: " .. Settings.UIToggleKey.Name
-		UIKeyButton.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-	end
+local SmoothValue = Label(
+	SmoothCard,
+	"0.15",
+	UDim2.fromOffset(60, 35),
+	UDim2.fromOffset(180, 18),
+	14,
+	Colors.Accent
+)
+
+SmoothValue.TextXAlignment = Enum.TextXAlignment.Center
+SmoothValue.Font = Enum.Font.GothamBold
+
+local SmoothMinus = Instance.new("TextButton")
+
+SmoothMinus.Size = UDim2.fromOffset(32, 32)
+SmoothMinus.Position = UDim2.fromOffset(145, 20)
+
+SmoothMinus.BackgroundColor3 = Colors.Button
+SmoothMinus.BorderSizePixel = 0
+SmoothMinus.Text = "−"
+SmoothMinus.TextColor3 = Colors.Text
+SmoothMinus.TextSize = 18
+SmoothMinus.Font = Enum.Font.GothamBold
+
+SmoothMinus.Parent = SmoothCard
+Corner(SmoothMinus, 8)
+
+local SmoothPlus = Instance.new("TextButton")
+
+SmoothPlus.Size = UDim2.fromOffset(32, 32)
+SmoothPlus.Position = UDim2.fromOffset(285, 20)
+
+SmoothPlus.BackgroundColor3 = Colors.Button
+SmoothPlus.BorderSizePixel = 0
+SmoothPlus.Text = "+"
+SmoothPlus.TextColor3 = Colors.Text
+SmoothPlus.TextSize = 18
+SmoothPlus.Font = Enum.Font.GothamBold
+
+SmoothPlus.Parent = SmoothCard
+Corner(SmoothPlus, 8)
+
+local function UpdateSmoothness()
+
+	SmoothValue.Text =
+		string.format(
+			"%.2f",
+			Settings.Smoothness
+		)
 end
 
-table.insert(Connections, UIKeyButton.MouseButton1Click:Connect(function()
-	if not SystemActive or listeningForLockKey then
-		return
-	end
-
-	listeningForUIKey = true
-	updateUIKeyButton()
-end))
-
---==================================================
--- FOV
---==================================================
-
-local FOVLabel = Instance.new("TextLabel")
-FOVLabel.Size = UDim2.fromOffset(280, 25)
-FOVLabel.Position = UDim2.fromOffset(20, 260)
-FOVLabel.BackgroundTransparency = 1
-FOVLabel.Text = "FOV: 130"
-FOVLabel.TextColor3 = Color3.new(1, 1, 1)
-FOVLabel.TextSize = 15
-FOVLabel.Font = Enum.Font.GothamMedium
-FOVLabel.Parent = Main
-
-local FOVMinus = createButton(
-	"-",
-	UDim2.fromOffset(20, 290),
-	UDim2.fromOffset(135, 35)
-)
-
-local FOVPlus = createButton(
-	"+",
-	UDim2.fromOffset(165, 290),
-	UDim2.fromOffset(135, 35)
-)
-
-local function updateFOV()
-	FOVLabel.Text = "FOV: " .. tostring(Settings.FOV)
-end
-
-table.insert(Connections, FOVMinus.MouseButton1Click:Connect(function()
-	if not SystemActive then
-		return
-	end
-
-	Settings.FOV = math.max(30, Settings.FOV - 10)
-	updateFOV()
-end))
-
-table.insert(Connections, FOVPlus.MouseButton1Click:Connect(function()
-	if not SystemActive then
-		return
-	end
-
-	Settings.FOV = math.min(500, Settings.FOV + 10)
-	updateFOV()
-end))
-
---==================================================
--- SMOOTHNESS
---==================================================
-
-local SmoothLabel = Instance.new("TextLabel")
-SmoothLabel.Size = UDim2.fromOffset(280, 25)
-SmoothLabel.Position = UDim2.fromOffset(20, 335)
-SmoothLabel.BackgroundTransparency = 1
-SmoothLabel.Text = "Smoothness: 0.15"
-SmoothLabel.TextColor3 = Color3.new(1, 1, 1)
-SmoothLabel.TextSize = 15
-SmoothLabel.Font = Enum.Font.GothamMedium
-SmoothLabel.Parent = Main
-
-local SmoothMinus = createButton(
-	"-",
-	UDim2.fromOffset(20, 365),
-	UDim2.fromOffset(135, 35)
-)
-
-local SmoothPlus = createButton(
-	"+",
-	UDim2.fromOffset(165, 365),
-	UDim2.fromOffset(135, 35)
-)
-
-local function updateSmoothness()
-	SmoothLabel.Text =
-		"Smoothness: "
-		.. string.format("%.2f", Settings.Smoothness)
-end
-
-table.insert(Connections, SmoothMinus.MouseButton1Click:Connect(function()
-	if not SystemActive then
-		return
-	end
+SmoothMinus.MouseButton1Click:Connect(function()
 
 	Settings.Smoothness =
-		math.max(0, Settings.Smoothness - 0.05)
+		math.max(
+			0,
+			Settings.Smoothness - 0.05
+		)
 
-	updateSmoothness()
-end))
+	UpdateSmoothness()
+end)
 
-table.insert(Connections, SmoothPlus.MouseButton1Click:Connect(function()
-	if not SystemActive then
-		return
-	end
+SmoothPlus.MouseButton1Click:Connect(function()
 
 	Settings.Smoothness =
-		math.min(1, Settings.Smoothness + 0.05)
+		math.min(
+			1,
+			Settings.Smoothness + 0.05
+		)
 
-	updateSmoothness()
-end))
+	UpdateSmoothness()
+end)
 
 --==================================================
 -- FOV CIRCLE
 --==================================================
 
 local FOVCircle = Instance.new("Frame")
+
 FOVCircle.Name = "FOVCircle"
-FOVCircle.AnchorPoint = Vector2.new(0.5, 0.5)
-FOVCircle.Position = UDim2.fromScale(0.5, 0.5)
+
+FOVCircle.AnchorPoint =
+	Vector2.new(0.5, 0.5)
+
+FOVCircle.Position =
+	UDim2.fromScale(0.5, 0.5)
+
 FOVCircle.BackgroundTransparency = 1
+
 FOVCircle.Parent = ScreenGui
 
-local FOVCorner = Instance.new("UICorner")
-FOVCorner.CornerRadius = UDim.new(1, 0)
-FOVCorner.Parent = FOVCircle
+Corner(FOVCircle, 1000)
 
-local FOVStroke = Instance.new("UIStroke")
-FOVStroke.Color = Color3.fromRGB(255, 255, 255)
-FOVStroke.Thickness = 2
-FOVStroke.Transparency = 0.25
-FOVStroke.Parent = FOVCircle
+local FOVStroke = Stroke(
+	FOVCircle,
+	Colors.Accent,
+	0.2,
+	2
+)
 
-local function updateFOVCircle()
-	FOVCircle.Size = UDim2.fromOffset(
-		Settings.FOV * 2,
-		Settings.FOV * 2
-	)
+local function UpdateFOVCircle()
+
+	FOVCircle.Size =
+		UDim2.fromOffset(
+			Settings.FOV * 2,
+			Settings.FOV * 2
+		)
 end
+
+--==================================================
+-- DRAGGING
+--==================================================
+
+local Dragging = false
+local DragStart
+local StartPosition
+
+TopBar.InputBegan:Connect(function(input)
+
+	if input.UserInputType ==
+		Enum.UserInputType.MouseButton1 then
+
+		Dragging = true
+
+		DragStart = input.Position
+		StartPosition = Main.Position
+	end
+end)
+
+TopBar.InputEnded:Connect(function(input)
+
+	if input.UserInputType ==
+		Enum.UserInputType.MouseButton1 then
+
+		Dragging = false
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+
+	if not Dragging then
+		return
+	end
+
+	if input.UserInputType ==
+		Enum.UserInputType.MouseMovement then
+
+		local Delta =
+			input.Position - DragStart
+
+		Main.Position = UDim2.new(
+			StartPosition.X.Scale,
+			StartPosition.X.Offset + Delta.X,
+			StartPosition.Y.Scale,
+			StartPosition.Y.Offset + Delta.Y
+		)
+	end
+end)
 
 --==================================================
 -- ESP
 --==================================================
 
-local function createESP(player)
+local function CreateESP(player)
+
 	if player == LocalPlayer then
 		return
 	end
 
-	local character = player.Character
-	if not character then
+	local Character = player.Character
+
+	if not Character then
 		return
 	end
 
-	local oldHighlight = character:FindFirstChild("PlayerESP")
-	if oldHighlight then
-		oldHighlight:Destroy()
+	local OldHighlight =
+		Character:FindFirstChild("JackDevESP")
+
+	if OldHighlight then
+		OldHighlight:Destroy()
 	end
 
-	local oldName = character:FindFirstChild("ESPName")
-	if oldName then
-		oldName:Destroy()
-	end
+	local Highlight =
+		Instance.new("Highlight")
 
-	local Highlight = Instance.new("Highlight")
-	Highlight.Name = "PlayerESP"
-	Highlight.FillColor = Settings.ESPColor
-	Highlight.OutlineColor = Color3.new(1, 1, 1)
-	Highlight.FillTransparency = 0.5
+	Highlight.Name = "JackDevESP"
+
+	Highlight.FillColor =
+		Settings.ESPColor
+
+	Highlight.OutlineColor =
+		Color3.new(1, 1, 1)
+
+	Highlight.FillTransparency = 0.55
 	Highlight.OutlineTransparency = 0
-	Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-	Highlight.Enabled = Settings.ESP
-	Highlight.Parent = character
 
-	local Head = character:FindFirstChild("Head")
+	Highlight.DepthMode =
+		Enum.HighlightDepthMode.AlwaysOnTop
 
-	if Head then
-		local Billboard = Instance.new("BillboardGui")
-		Billboard.Name = "ESPName"
-		Billboard.Size = UDim2.fromOffset(200, 40)
-		Billboard.StudsOffset = Vector3.new(0, 2.5, 0)
-		Billboard.AlwaysOnTop = true
-		Billboard.Enabled = Settings.ESP
-		Billboard.Parent = character
+	Highlight.Enabled =
+		Settings.ESP
 
-		local NameLabel = Instance.new("TextLabel")
-		NameLabel.Size = UDim2.fromScale(1, 1)
-		NameLabel.BackgroundTransparency = 1
-		NameLabel.Text = player.DisplayName
-		NameLabel.TextColor3 = Settings.ESPColor
-		NameLabel.TextStrokeTransparency = 0
-		NameLabel.TextScaled = true
-		NameLabel.Font = Enum.Font.GothamBold
-		NameLabel.Parent = Billboard
-	end
+	Highlight.Parent =
+		Character
 end
 
-local function updateAllESP()
+local function UpdateESP()
+
 	for _, player in Players:GetPlayers() do
+
 		if player ~= LocalPlayer then
 
-			local character = player.Character
+			local Character =
+				player.Character
 
-			if character then
+			if Character then
 
-				local highlight =
-					character:FindFirstChild("PlayerESP")
+				local Highlight =
+					Character:FindFirstChild(
+						"JackDevESP"
+					)
 
-				local nameTag =
-					character:FindFirstChild("ESPName")
+				if Highlight then
 
-				if highlight then
-					highlight.Enabled = Settings.ESP
-					highlight.FillColor = Settings.ESPColor
-				end
+					Highlight.Enabled =
+						Settings.ESP
 
-				if nameTag then
-					nameTag.Enabled = Settings.ESP
-
-					local label =
-						nameTag:FindFirstChildOfClass("TextLabel")
-
-					if label then
-						label.TextColor3 = Settings.ESPColor
-					end
+					Highlight.FillColor =
+						Settings.ESPColor
 				end
 			end
 		end
@@ -504,42 +974,39 @@ local function updateAllESP()
 end
 
 for _, player in Players:GetPlayers() do
+
 	if player ~= LocalPlayer then
 
 		if player.Character then
-			createESP(player)
+			CreateESP(player)
 		end
 
-		table.insert(Connections, player.CharacterAdded:Connect(function()
-			task.wait(0.5)
+		table.insert(
+			Connections,
+			player.CharacterAdded:Connect(
+				function()
 
-			if SystemActive then
-				createESP(player)
-			end
-		end))
+					task.wait(0.5)
+
+					if SystemActive then
+						CreateESP(player)
+					end
+				end
+			)
+		)
 	end
 end
-
-table.insert(Connections, Players.PlayerAdded:Connect(function(player)
-
-	table.insert(Connections, player.CharacterAdded:Connect(function()
-		task.wait(0.5)
-
-		if SystemActive then
-			createESP(player)
-		end
-	end))
-end))
 
 --==================================================
 -- TARGETING
 --==================================================
 
-local function getNearestPlayer()
-	local closestPlayer = nil
-	local closestDistance = Settings.FOV
+local function GetNearestPlayer()
 
-	local viewportCenter = Vector2.new(
+	local ClosestPlayer = nil
+	local ClosestDistance = Settings.FOV
+
+	local Center = Vector2.new(
 		Camera.ViewportSize.X / 2,
 		Camera.ViewportSize.Y / 2
 	)
@@ -548,264 +1015,344 @@ local function getNearestPlayer()
 
 		if player ~= LocalPlayer then
 
-			local character = player.Character
+			local Character =
+				player.Character
 
-			local humanoid =
-				character
-				and character:FindFirstChildOfClass("Humanoid")
+			local Humanoid =
+				Character
+				and Character:FindFirstChildOfClass(
+					"Humanoid"
+				)
 
-			local head =
-				character
-				and character:FindFirstChild("Head")
+			local Head =
+				Character
+				and Character:FindFirstChild(
+					"Head"
+				)
 
-			if humanoid
-				and head
-				and humanoid.Health > 0 then
+			if Humanoid
+				and Head
+				and Humanoid.Health > 0 then
 
-				local screenPosition, onScreen =
-					Camera:WorldToViewportPoint(head.Position)
+				local Position, OnScreen =
+					Camera:WorldToViewportPoint(
+						Head.Position
+					)
 
-				if onScreen and screenPosition.Z > 0 then
+				if OnScreen
+					and Position.Z > 0 then
 
-					local distance =
+					local Distance =
 						(
 							Vector2.new(
-								screenPosition.X,
-								screenPosition.Y
-							) - viewportCenter
+								Position.X,
+								Position.Y
+							) - Center
 						).Magnitude
 
-					if distance < closestDistance then
-						closestDistance = distance
-						closestPlayer = player
+					if Distance <
+						ClosestDistance then
+
+						ClosestDistance =
+							Distance
+
+						ClosestPlayer =
+							player
 					end
 				end
 			end
 		end
 	end
 
-	return closestPlayer
+	return ClosestPlayer
 end
 
-local function isValidTarget(player)
+local function ValidTarget(Player)
 
-	if not player or player == LocalPlayer then
-		return false
-	end
-
-	local character = player.Character
-
-	if not character then
-		return false
-	end
-
-	local humanoid =
-		character:FindFirstChildOfClass("Humanoid")
-
-	local head =
-		character:FindFirstChild("Head")
-
-	if not humanoid
-		or not head
-		or humanoid.Health <= 0 then
+	if not Player
+		or Player == LocalPlayer then
 
 		return false
 	end
 
-	local screenPosition, onScreen =
-		Camera:WorldToViewportPoint(head.Position)
+	local Character =
+		Player.Character
 
-	if not onScreen or screenPosition.Z <= 0 then
+	if not Character then
 		return false
 	end
 
-	local center = Vector2.new(
+	local Humanoid =
+		Character:FindFirstChildOfClass(
+			"Humanoid"
+		)
+
+	local Head =
+		Character:FindFirstChild(
+			"Head"
+		)
+
+	if not Humanoid
+		or not Head
+		or Humanoid.Health <= 0 then
+
+		return false
+	end
+
+	local Position, OnScreen =
+		Camera:WorldToViewportPoint(
+			Head.Position
+		)
+
+	if not OnScreen
+		or Position.Z <= 0 then
+
+		return false
+	end
+
+	local Center = Vector2.new(
 		Camera.ViewportSize.X / 2,
 		Camera.ViewportSize.Y / 2
 	)
 
-	local distance =
+	local Distance =
 		(
 			Vector2.new(
-				screenPosition.X,
-				screenPosition.Y
-			) - center
+				Position.X,
+				Position.Y
+			) - Center
 		).Magnitude
 
-	return distance <= Settings.FOV
+	return Distance <= Settings.FOV
 end
 
 --==================================================
--- KEYBINDS
+-- KEYBIND SELECTION
 --==================================================
 
-table.insert(Connections, UserInputService.InputBegan:Connect(function(
-	input,
-	gameProcessed
-)
+LockKeyButton.MouseButton1Click:Connect(function()
 
-	if not SystemActive then
+	if ListeningForUIKey then
 		return
 	end
 
-	if input.UserInputType ~= Enum.UserInputType.Keyboard then
+	ListeningForLockKey = true
+
+	LockKeyButton.Text =
+		"Press key..."
+end)
+
+UIKeyButton.MouseButton1Click:Connect(function()
+
+	if ListeningForLockKey then
 		return
 	end
 
-	-- Selecting lock key
-	if listeningForLockKey then
-		Settings.LockKey = input.KeyCode
-		listeningForLockKey = false
+	ListeningForUIKey = true
 
-		updateLockKeyButton()
-		return
-	end
+	UIKeyButton.Text =
+		"Press key..."
+end)
 
-	-- Selecting UI key
-	if listeningForUIKey then
-		Settings.UIToggleKey = input.KeyCode
-		listeningForUIKey = false
+table.insert(
+	Connections,
+	UserInputService.InputBegan:Connect(
+		function(input, processed)
 
-		updateUIKeyButton()
-		return
-	end
+			if not SystemActive then
+				return
+			end
 
-	if gameProcessed then
-		return
-	end
+			if input.UserInputType
+				~= Enum.UserInputType.Keyboard then
 
-	-- UI toggle
-	if input.KeyCode == Settings.UIToggleKey then
-		Main.Visible = not Main.Visible
-		return
-	end
+				return
+			end
 
-	-- Lock-on toggle
-	if input.KeyCode == Settings.LockKey then
+			if ListeningForLockKey then
 
-		Settings.LockOn = not Settings.LockOn
+				Settings.LockKey =
+					input.KeyCode
 
-		if Settings.LockOn then
-			lockedTarget = getNearestPlayer()
-		else
-			lockedTarget = nil
-		end
+				ListeningForLockKey =
+					false
 
-		updateLockButton()
-	end
-end))
+				LockKeyButton.Text =
+					Settings.LockKey.Name
 
---==================================================
--- MAIN LOOP
---==================================================
+				return
+			end
 
-table.insert(Connections, RunService.RenderStepped:Connect(function()
+			if ListeningForUIKey then
 
-	if not SystemActive then
-		return
-	end
+				Settings.UIToggleKey =
+					input.KeyCode
 
-	updateFOVCircle()
-	updateAllESP()
+				ListeningForUIKey =
+					false
 
-	if not Settings.LockOn then
-		return
-	end
+				UIKeyButton.Text =
+					Settings.UIToggleKey.Name
 
-	if not isValidTarget(lockedTarget) then
-		lockedTarget = getNearestPlayer()
-	end
+				return
+			end
 
-	if lockedTarget then
+			if processed then
+				return
+			end
 
-		local character = lockedTarget.Character
+			-- UI toggle
+			if input.KeyCode ==
+				Settings.UIToggleKey then
 
-		local head =
-			character
-			and character:FindFirstChild("Head")
+				Main.Visible =
+					not Main.Visible
 
-		if head then
+				return
+			end
 
-			local cameraPosition =
-				Camera.CFrame.Position
+			-- Aimlock
+			if input.KeyCode ==
+				Settings.LockKey then
 
-			local targetCFrame =
-				CFrame.lookAt(
-					cameraPosition,
-					head.Position
-				)
+				Settings.LockOn =
+					not Settings.LockOn
 
-			if Settings.Smoothness <= 0 then
-				Camera.CFrame = targetCFrame
-			else
-				Camera.CFrame =
-					Camera.CFrame:Lerp(
-						targetCFrame,
-						Settings.Smoothness
-					)
+				if Settings.LockOn then
+
+					LockedTarget =
+						GetNearestPlayer()
+
+				else
+
+					LockedTarget =
+						nil
+				end
+
+				UpdateLockUI()
 			end
 		end
-	end
-end))
+	)
+)
 
 --==================================================
--- CLOSE / REMOVE EVERYTHING
+-- RENDER LOOP
 --==================================================
 
-local function shutdown()
+table.insert(
+	Connections,
+	RunService.RenderStepped:Connect(
+		function()
+
+			if not SystemActive then
+				return
+			end
+
+			UpdateFOVCircle()
+			UpdateESP()
+
+			if not Settings.LockOn then
+				return
+			end
+
+			if not ValidTarget(
+				LockedTarget
+			) then
+
+				LockedTarget =
+					GetNearestPlayer()
+			end
+
+			if LockedTarget then
+
+				local Character =
+					LockedTarget.Character
+
+				local Head =
+					Character
+					and Character:FindFirstChild(
+						"Head"
+					)
+
+				if Head then
+
+					local Target =
+						CFrame.lookAt(
+							Camera.CFrame.Position,
+							Head.Position
+						)
+
+					if Settings.Smoothness <= 0 then
+
+						Camera.CFrame =
+							Target
+
+					else
+
+						Camera.CFrame =
+							Camera.CFrame:Lerp(
+								Target,
+								Settings.Smoothness
+							)
+					end
+				end
+			end
+		end
+	)
+)
+
+--==================================================
+-- SHUTDOWN
+--==================================================
+
+local function Shutdown()
 
 	if not SystemActive then
 		return
 	end
 
 	SystemActive = false
-	Settings.LockOn = false
-	lockedTarget = nil
 
-	-- Disconnect every connection
-	for _, connection in ipairs(Connections) do
-		if connection and connection.Connected then
-			connection:Disconnect()
+	Settings.LockOn = false
+	LockedTarget = nil
+
+	for _, Connection in ipairs(Connections) do
+
+		if Connection
+			and Connection.Connected then
+
+			Connection:Disconnect()
 		end
 	end
 
 	table.clear(Connections)
 
-	-- Remove ESP from every player
 	for _, player in Players:GetPlayers() do
 
 		if player.Character then
 
-			local highlight =
-				player.Character:FindFirstChild("PlayerESP")
+			local ESP =
+				player.Character:FindFirstChild(
+					"JackDevESP"
+				)
 
-			if highlight then
-				highlight:Destroy()
-			end
-
-			local nameTag =
-				player.Character:FindFirstChild("ESPName")
-
-			if nameTag then
-				nameTag:Destroy()
+			if ESP then
+				ESP:Destroy()
 			end
 		end
 	end
 
-	-- Remove the entire UI/FOV
 	ScreenGui:Destroy()
 end
 
-CloseButton.MouseButton1Click:Connect(shutdown)
+CloseButton.MouseButton1Click:Connect(Shutdown)
 
 --==================================================
--- INITIAL STATE
+-- INITIALIZE
 --==================================================
 
-updateLockButton()
-updateESPButton()
-updateLockKeyButton()
-updateUIKeyButton()
-updateFOV()
-updateSmoothness()
-updateFOVCircle()
+UpdateLockUI()
+UpdateESPUI()
+UpdateFOV()
+UpdateSmoothness()
+UpdateFOVCircle()
