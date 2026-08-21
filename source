@@ -20,7 +20,7 @@ local Settings = {
 
 	FOV = 130,
 	Smoothness = 0.15,
-	LockPart = "Head", -- Head / Chest / None
+	LockPart = "Head",
 
 	ESPColor = Color3.fromRGB(170, 90, 255),
 
@@ -134,14 +134,9 @@ ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 local Main = Instance.new("Frame")
 
 Main.Name = "Main"
-Main.Size = UDim2.fromOffset(660,520)
+Main.Size = UDim2.fromOffset(700, 520)
 
-Main.Position = UDim2.new(
-	0.5,
-	-310,
-	0.5,
-	-225
-)
+Main.Position = UDim2.new(0.5,-350,0.5,-260)
 
 Main.BackgroundColor3 = Colors.Background
 Main.BorderSizePixel = 0
@@ -410,7 +405,7 @@ Label(
 
 local Content = Instance.new("Frame")
 
-Content.Size = UDim2.fromOffset(470,430)
+Content.Size = UDim2.fromOffset(500,430)
 
 Content.Position =
 	UDim2.fromOffset(174, 76)
@@ -487,7 +482,7 @@ local function CreateToggle(parent)
 	local Button = Instance.new("TextButton")
 
 	Button.Size =
-		UDim2.fromOffset(72,26)
+		UDim2.fromOffset(85, 32)
 
 	Button.Position =
 		UDim2.new(
@@ -506,7 +501,7 @@ local function CreateToggle(parent)
 	Button.TextColor3 =
 		Colors.SubText
 
-	Button.TextSize = 10
+	Button.TextSize = 11
 	Button.Font =
 		Enum.Font.GothamBold
 
@@ -522,9 +517,10 @@ end
 --==================================================
 
 local LockCard = CreateCard(
-	"🎯 Head Aimlock",
+	"Head Aimlock",
 	"Lock onto the nearest player",
-	0
+	0,
+	60
 )
 
 local LockToggle =
@@ -532,7 +528,7 @@ local LockToggle =
 
 local function UpdateLockUI()
 
-	if Settings.LockPart == "Head" then
+	if Settings.LockOn then
 
 		LockToggle.Text = "ON"
 
@@ -567,16 +563,13 @@ local function UpdateLockUI()
 end
 
 LockToggle.MouseButton1Click:Connect(function()
-    if Settings.LockPart == "Head" then
-        Settings.LockPart = "None"
-        Settings.LockOn = false
-    else
-        Settings.LockPart = "Head"
-        Settings.LockOn = true
-    end
-    LockedTarget = nil
-    UpdateLockUI()
-    UpdateChestUI()
+
+	Settings.LockPart = "Head"
+	Settings.LockOn = true
+	LockedTarget = nil
+
+	UpdateLockUI()
+	UpdateChestUI()
 end)
 
 
@@ -585,33 +578,27 @@ end)
 --==================================================
 
 local ChestCard = CreateCard(
-	"🫀 Chest Aimlock",
-	"Lock onto the player's chest (UpperTorso)",
-	164
+	"Chest Aimlock",
+	"Locks onto UpperTorso / Torso",
+	68,
+	60
 )
 
 local ChestToggle = CreateToggle(ChestCard)
 
 local function UpdateChestUI()
-
 	if Settings.LockPart == "Chest" then
 		ChestToggle.Text = "ON"
-		Tween(ChestToggle,{
-			BackgroundColor3 = Colors.Accent,
-			TextColor3 = Color3.new(1,1,1)
-		},0.15)
+		Tween(ChestToggle,{BackgroundColor3=Colors.Accent,TextColor3=Color3.new(1,1,1)},0.15)
 	else
 		ChestToggle.Text = "OFF"
-		Tween(ChestToggle,{
-			BackgroundColor3 = Colors.Button,
-			TextColor3 = Colors.SubText
-		},0.15)
+		Tween(ChestToggle,{BackgroundColor3=Colors.Button,TextColor3=Colors.SubText},0.15)
 	end
 end
 
 ChestToggle.MouseButton1Click:Connect(function()
-	Settings.LockPart = Settings.LockPart == "Chest" and "None" or "Chest"
-	Settings.LockOn = Settings.LockPart ~= "None"
+	Settings.LockPart = "Chest"
+	Settings.LockOn = true
 	LockedTarget = nil
 	UpdateLockUI()
 	UpdateChestUI()
@@ -624,7 +611,8 @@ end)
 local ESPCard = CreateCard(
 	"Player ESP",
 	"Highlight players through the map",
-	144
+	68,
+	60
 )
 
 local ESPToggle =
@@ -681,8 +669,8 @@ end)
 local KeyCard = CreateCard(
 	"Keybinds",
 	"Customize your controls",
-	164,
-	72
+	136,
+	60
 )
 
 local LockKeyButton = Instance.new("TextButton")
@@ -970,7 +958,7 @@ end
 local FOVCard = CreateCard(
 	"Field of View",
 	"Targeting radius • 30 - 500",
-	340,
+	272,
 	72
 )
 
@@ -1013,7 +1001,7 @@ CreateSlider(
 local SmoothCard = CreateCard(
 	"Smoothness",
 	"Camera movement • 0 - 1",
-	440,
+	352,
 	72
 )
 
@@ -1259,9 +1247,9 @@ local function GetNearestPlayer()
 
 			local Head =
 				Character
-				and (Settings.LockPart == "Chest"
-					and (Character:FindFirstChild("UpperTorso") or Character:FindFirstChild("Torso")))
-					or Character:FindFirstChild("Head")
+				and Character:FindFirstChild(
+					"Head"
+				)
 
 			if Humanoid
 				and Head
@@ -1269,7 +1257,7 @@ local function GetNearestPlayer()
 
 				local Position, OnScreen =
 					Camera:WorldToViewportPoint(
-						AimPart.Position
+						Head.Position
 					)
 
 				if OnScreen
@@ -1334,7 +1322,7 @@ local function ValidTarget(Player)
 
 	local Position, OnScreen =
 		Camera:WorldToViewportPoint(
-			AimPart.Position
+			Head.Position
 		)
 
 	if not OnScreen
@@ -1515,7 +1503,7 @@ table.insert(
 					local TargetCFrame =
 						CFrame.lookAt(
 							Camera.CFrame.Position,
-							AimPart.Position
+							Head.Position
 						)
 
 					if Settings.Smoothness <= 0 then
