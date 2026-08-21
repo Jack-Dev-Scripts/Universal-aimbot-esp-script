@@ -134,7 +134,7 @@ ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 local Main = Instance.new("Frame")
 
 Main.Name = "Main"
-Main.Size = UDim2.fromOffset(760, 620)
+Main.Size = UDim2.fromOffset(700, 560)
 
 Main.Position = UDim2.new(
 	0.5,
@@ -322,7 +322,7 @@ end)
 
 local Sidebar = Instance.new("Frame")
 
-Sidebar.Size = UDim2.fromOffset(185,530)
+Sidebar.Size = UDim2.fromOffset(165,470)
 
 Sidebar.Position =
 	UDim2.fromOffset(12, 76)
@@ -410,7 +410,7 @@ Label(
 
 local Content = Instance.new("Frame")
 
-Content.Size = UDim2.fromOffset(540,530)
+Content.Size = UDim2.fromOffset(500,470)
 
 Content.Position =
 	UDim2.fromOffset(174, 76)
@@ -620,9 +620,9 @@ end)
 --==================================================
 
 local ESPCard = CreateCard(
-	"Player ESP",
+	"👁 Player ESP",
 	"Highlight players through the map",
-	82
+	164
 )
 
 local ESPToggle =
@@ -969,7 +969,7 @@ local FOVCard = CreateCard(
 	"Field of View",
 	"Targeting radius • 30 - 500",
 	340,
-	90
+	72
 )
 
 local FOVValue = Label(
@@ -1012,7 +1012,7 @@ local SmoothCard = CreateCard(
 	"Smoothness",
 	"Camera movement • 0 - 1",
 	440,
-	90
+	72
 )
 
 local SmoothValue = Label(
